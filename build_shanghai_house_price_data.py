@@ -8,7 +8,7 @@ import pandas as pd
 
 START = "2011-01-01"
 END = os.environ.get("END_MONTH")
-CITIES = ["上海", "南京", "成都", "昆明", "珠海", "广州", "深圳"]
+CITIES = ["北京", "上海", "南京", "成都", "昆明", "珠海", "广州", "深圳"]
 
 
 def city_rows(df, city: str) -> list[dict]:
