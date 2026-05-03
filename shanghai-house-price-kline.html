@@ -419,27 +419,31 @@
     </section>
 
     <p class="source">
-      指数数据来源：AkShare 的中国新房价指数接口，源站为东方财富宏观数据并整理自国家统计局 70 个大中城市住宅销售价格指数。默认房价锚点来自公开网页检索到的 2026 年 3 月附近城市均价，页面上方可自行修改。
+      指数数据来源：AkShare 的中国新房价指数接口，源站为东方财富宏观数据并整理自国家统计局 70 个大中城市住宅销售价格指数。默认房价锚点来自公开网页检索到的 2026 年 3 月附近城市均价，页面上方可自行修改。珠海不在该接口的同口径城市序列中，暂只保留为不可选提示。
     </p>
   </main>
 
   <script src="./shanghai-house-price-data.js"></script>
   <script>
-    const allCandles = window.SHANGHAI_HOUSE_PRICE_DATA.map((d) => ({
-      ...d,
-      pct: d.mom - 100
-    }));
+    const CITY_BASELINES = {
+      "上海": { month: "2026-03", price: 61047 },
+      "南京": { month: "2026-03", price: 24841 },
+      "成都": { month: "2026-03", price: 13423 },
+      "昆明": { month: "2026-03", price: 12145 },
+      "珠海": { month: "2026-03", price: 19457 },
+      "广州": { month: "2026-03", price: 36414 },
+      "深圳": { month: "2026-03", price: 68311 }
+    };
 
+    const rawData = window.HOUSE_PRICE_DATA || { "上海": window.SHANGHAI_HOUSE_PRICE_DATA || [] };
     const minControlDate = "2010-01";
-    const maxControlDate = "2026-03";
-    const firstDataDate = allCandles[0].date;
-    const lastDataDate = allCandles[allCandles.length - 1].date;
     const svg = document.getElementById("chart");
     const atrSvg = document.getElementById("atrChart");
     const adrSvg = document.getElementById("adrChart");
     const tooltip = document.getElementById("tooltip");
     const notice = document.getElementById("notice");
     const ns = "http://www.w3.org/2000/svg";
+    const citySelect = document.getElementById("citySelect");
     const startMonth = document.getElementById("startMonth");
     const endMonth = document.getElementById("endMonth");
     const startRange = document.getElementById("startRange");
@@ -447,6 +451,9 @@
     const indicatorPeriod = document.getElementById("indicatorPeriod");
     const baseMonth = document.getElementById("baseMonth");
     const basePrice = document.getElementById("basePrice");
+    let allCandles = [];
+    let firstDataDate = "2011-01";
+    let lastDataDate = "2026-03";
 
     function monthIndex(date) {
       const [year, month] = date.split("-").map(Number);
@@ -466,25 +473,22 @@
       return node;
     }
 
+    function priceText(value) {
+      return value === null || value === undefined ? "--" : `${Math.round(value).toLocaleString("zh-CN")} 元/㎡`;
+    }
+
     function placeTooltip(event, html) {
       tooltip.style.display = "block";
       tooltip.innerHTML = html;
-
       const chartBox = svg.getBoundingClientRect();
       const wrapBox = svg.parentElement.getBoundingClientRect();
       const tipBox = tooltip.getBoundingClientRect();
       let left = event.clientX - wrapBox.left + 12;
       let top = event.clientY - wrapBox.top - 12;
-
-      if (left + tipBox.width > wrapBox.width - 8) {
-        left = event.clientX - wrapBox.left - tipBox.width - 12;
-      }
-      if (top + tipBox.height > chartBox.height - 8) {
-        top = chartBox.height - tipBox.height - 8;
-      }
+      if (left + tipBox.width > wrapBox.width - 8) left = event.clientX - wrapBox.left - tipBox.width - 12;
+      if (top + tipBox.height > chartBox.height - 8) top = chartBox.height - tipBox.height - 8;
       if (top < 8) top = 8;
       if (left < 8) left = 8;
-
       tooltip.style.left = `${left}px`;
       tooltip.style.top = `${top}px`;
     }
@@ -516,11 +520,7 @@
       indicatorPeriod.value = period;
       const trueRanges = candles.map((d, index) => {
         const previousClose = index === 0 ? d.open : candles[index - 1].close;
-        return Math.max(
-          d.high - d.low,
-          Math.abs(d.high - previousClose),
-          Math.abs(d.low - previousClose)
-        );
+        return Math.max(d.high - d.low, Math.abs(d.high - previousClose), Math.abs(d.low - previousClose));
       });
       const ranges = candles.map((d) => ((d.high - d.low) / d.open) * 100);
       const closes = candles.map((d) => d.close);
@@ -556,42 +556,52 @@
       const stepX = innerW / candles.length;
       const x = (i) => margin.left + stepX * i + stepX / 2;
       const y = (value) => margin.top + (max - value) / (max - min) * innerH;
-
       for (let i = 0; i <= 2; i++) {
         const value = min + (max - min) * i / 2;
         const yy = y(value);
+        const label = suffix === "元/㎡" ? Math.round(value).toLocaleString("zh-CN") : `${value.toFixed(2)}${suffix}`;
         el("line", { x1: margin.left, y1: yy, x2: width - margin.right, y2: yy, class: "grid" }, targetSvg);
-        const label = suffix === "元/㎡" ? `${Math.round(value).toLocaleString("zh-CN")}` : `${value.toFixed(2)}${suffix}`;
         el("text", { x: width - margin.right + 10, y: yy + 4, class: "axis" }, targetSvg).textContent = label;
       }
       el("line", { x1: margin.left, y1: height - margin.bottom, x2: width - margin.right, y2: height - margin.bottom, class: "axis-line" }, targetSvg);
-
-      const points = candles
-        .map((d, i) => ({ value: d[key], i }))
-        .filter((d) => d.value !== null);
+      const points = candles.map((d, i) => ({ value: d[key], i })).filter((d) => d.value !== null);
       const path = points.map((d, idx) => `${idx === 0 ? "M" : "L"} ${x(d.i)} ${y(d.value)}`).join(" ");
       el("path", { d: path, fill: "none", stroke: color, "stroke-width": 2 }, targetSvg);
-      points.forEach((d) => {
-        el("circle", { cx: x(d.i), cy: y(d.value), r: 2.3, fill: color, stroke: "#fff", "stroke-width": 1.5 }, targetSvg);
-      });
+      points.forEach((d) => el("circle", { cx: x(d.i), cy: y(d.value), r: 2.3, fill: color, stroke: "#fff", "stroke-width": 1.5 }, targetSvg));
     }
 
     function renderSeries(plot, candles, key, color, x, y) {
-      const points = candles
-        .map((d, i) => ({ value: d[key], i }))
-        .filter((d) => d.value !== null);
+      const points = candles.map((d, i) => ({ value: d[key], i })).filter((d) => d.value !== null);
       if (points.length < 2) return;
       const path = points.map((d, idx) => `${idx === 0 ? "M" : "L"} ${x(d.i)} ${y(d.value)}`).join(" ");
       el("path", { d: path, class: "ma-line", stroke: color }, plot);
     }
 
-    function priceText(value) {
-      return value === null || value === undefined ? "--" : `${Math.round(value).toLocaleString("zh-CN")} 元/㎡`;
+    function applyCity(city, resetAnchor = true) {
+      allCandles = (rawData[city] || []).map((d) => ({ ...d, pct: d.mom - 100 }));
+      firstDataDate = allCandles[0].date;
+      lastDataDate = allCandles[allCandles.length - 1].date;
+      const lastIndex = monthIndex(lastDataDate);
+      document.getElementById("pageTitle").textContent = `${city}二手住宅销售价格指数 K 线图`;
+      endMonth.max = lastDataDate;
+      startMonth.max = lastDataDate;
+      baseMonth.max = lastDataDate;
+      startRange.max = lastIndex;
+      endRange.max = lastIndex;
+      if (endMonth.value > lastDataDate || resetAnchor) endMonth.value = lastDataDate;
+      if (startMonth.value < firstDataDate || startMonth.value > lastDataDate || resetAnchor) startMonth.value = firstDataDate;
+      const baseline = CITY_BASELINES[city] || { month: lastDataDate, price: 10000 };
+      if (resetAnchor) {
+        baseMonth.value = baseline.month <= lastDataDate ? baseline.month : lastDataDate;
+        basePrice.value = baseline.price;
+      }
+      render();
     }
 
     function clampRange() {
       let start = monthIndex(startMonth.value);
       let end = monthIndex(endMonth.value);
+      const maxControlDate = lastDataDate;
       if (start > end) [start, end] = [end, start];
       start = Math.max(monthIndex(minControlDate), Math.min(start, monthIndex(maxControlDate)));
       end = Math.max(monthIndex(minControlDate), Math.min(end, monthIndex(maxControlDate)));
@@ -616,7 +626,8 @@
       if (month > lastDataDate) month = lastDataDate;
       baseMonth.value = month;
       const anchor = allCandles.find((d) => d.date === month) || allCandles[allCandles.length - 1];
-      const price = Math.max(1, Number(basePrice.value) || 55075);
+      const baseline = CITY_BASELINES[citySelect.value] || { price: 10000 };
+      const price = Math.max(1, Number(basePrice.value) || baseline.price);
       basePrice.value = Math.round(price);
       return price / anchor.close;
     }
@@ -659,24 +670,16 @@
       svg.textContent = "";
       atrSvg.textContent = "";
       adrSvg.textContent = "";
-
       if (!candles.length) {
         el("text", { x: 58, y: 80, fill: "#64748b", "font-size": 14 }, svg).textContent = "所选区间没有同口径月度数据，请把结束月份调到 2011-01 或之后。";
         return;
       }
-
       const width = svg.clientWidth || 1100;
       const height = svg.clientHeight || 600;
       const margin = { top: 34, right: 72, bottom: 58, left: 58 };
       const innerW = width - margin.left - margin.right;
       const innerH = height - margin.top - margin.bottom;
-      const values = candles.flatMap((d) => [
-        d.high,
-        d.low,
-        d.ema10,
-        d.ema21,
-        d.sma50
-      ]).filter((value) => value !== null && value !== undefined);
+      const values = candles.flatMap((d) => [d.high, d.low, d.ema10, d.ema21, d.sma50]).filter((value) => value !== null && value !== undefined);
       const min = Math.floor((Math.min(...values) - 2) * 10) / 10;
       const max = Math.ceil((Math.max(...values) + 2) * 10) / 10;
       const stepX = innerW / candles.length;
@@ -702,12 +705,10 @@
         crossV.setAttribute("x2", xx);
         crossH.setAttribute("y1", yy);
         crossH.setAttribute("y2", yy);
-
         const priceLabel = Math.round(price).toLocaleString("zh-CN");
         priceTextNode.textContent = priceLabel;
         priceBg.setAttribute("width", Math.max(64, priceLabel.length * 8 + 12));
         priceTag.setAttribute("transform", `translate(${width - margin.right + 4}, ${Math.max(margin.top, Math.min(yy - 11, height - margin.bottom - 22))})`);
-
         const dateLabel = candles[index].date;
         dateTextNode.textContent = dateLabel;
         dateBg.setAttribute("width", Math.max(58, dateLabel.length * 7 + 12));
@@ -720,7 +721,6 @@
         el("line", { x1: margin.left, y1: yy, x2: width - margin.right, y2: yy, class: "grid" }, plot);
         el("text", { x: width - margin.right + 10, y: yy + 4, class: "axis" }, plot).textContent = Math.round(value).toLocaleString("zh-CN");
       }
-
       el("line", { x1: margin.left, y1: margin.top, x2: margin.left, y2: height - margin.bottom, class: "axis-line" }, plot);
       el("line", { x1: margin.left, y1: height - margin.bottom, x2: width - margin.right, y2: height - margin.bottom, class: "axis-line" }, plot);
 
@@ -731,29 +731,13 @@
         const bodyBottom = y(Math.min(d.open, d.close));
         const bodyHeight = Math.max(2, bodyBottom - bodyTop);
         const group = el("g", { class: "candle", tabindex: "0" }, plot);
-
         el("line", { x1: xx, y1: y(d.high), x2: xx, y2: y(d.low), stroke: color, "stroke-width": 1.5 }, group);
-        el("rect", {
-          x: xx - candleW / 2,
-          y: bodyTop,
-          width: candleW,
-          height: bodyHeight,
-          rx: 1.5,
-          fill: color
-        }, group);
-
-        const hit = el("rect", {
-          x: xx - Math.max(stepX / 2, 5),
-          y: margin.top,
-          width: Math.max(stepX, 10),
-          height: innerH,
-          fill: "transparent"
-        }, group);
-
-        const atrText = d.atr === null ? "--" : `${Math.round(d.atr).toLocaleString("zh-CN")} 元/㎡`;
+        el("rect", { x: xx - candleW / 2, y: bodyTop, width: candleW, height: bodyHeight, rx: 1.5, fill: color }, group);
+        const hit = el("rect", { x: xx - Math.max(stepX / 2, 5), y: margin.top, width: Math.max(stepX, 10), height: innerH, fill: "transparent" }, group);
+        const atrText = d.atr === null ? "--" : priceText(d.atr);
         const adrText = d.adr === null ? "--" : `${d.adr.toFixed(2)}%`;
         const tooltipHtml = `
-          <strong>${d.date}</strong><br>
+          <strong>${citySelect.value} ${d.date}</strong><br>
           开：${priceText(d.open)}<br>
           收：${priceText(d.close)}<br>
           环比：${d.pct >= 0 ? "+" : ""}${d.pct.toFixed(1)}%<br>
@@ -791,28 +775,36 @@
       renderSeries(plot, candles, "ema21", "#14b8a6", x, y);
       renderSeries(plot, candles, "sma50", "#111827", x, y);
       candles.forEach((d, i) => el("circle", { cx: x(i), cy: y(d.close), r: 2.8, class: "point" }, plot));
-
       const labelEvery = Math.max(1, Math.ceil(candles.length / (width < 720 ? 7 : 14)));
       candles.forEach((d, i) => {
         if (i % labelEvery === 0 || i === candles.length - 1) {
-          el("text", {
-            x: x(i),
-            y: height - margin.bottom + 26,
-            "text-anchor": "middle",
-            class: "axis"
-          }, plot).textContent = d.date.slice(2);
+          el("text", { x: x(i), y: height - margin.bottom + 26, "text-anchor": "middle", class: "axis" }, plot).textContent = d.date.slice(2);
         }
       });
-
       el("text", { x: margin.left, y: 22, fill: "#64748b", "font-size": 13 }, plot).textContent = "估算均价，元/㎡";
       renderIndicator(atrSvg, candles, "atr", "#8b5cf6", "元/㎡");
       renderIndicator(adrSvg, candles, "adr", "#f59e0b", "%");
       const latestWithAtr = [...candles].reverse().find((d) => d.atr !== null);
       const latestWithAdr = [...candles].reverse().find((d) => d.adr !== null);
-      document.getElementById("atrLatest").textContent = latestWithAtr ? `${latestWithAtr.date}: ${Math.round(latestWithAtr.atr).toLocaleString("zh-CN")} 元/㎡` : "--";
+      document.getElementById("atrLatest").textContent = latestWithAtr ? `${latestWithAtr.date}: ${priceText(latestWithAtr.atr)}` : "--";
       document.getElementById("adrLatest").textContent = latestWithAdr ? `${latestWithAdr.date}: ${latestWithAdr.adr.toFixed(2)}%` : "--";
     }
 
+    Object.keys(rawData).forEach((city) => {
+      const option = document.createElement("option");
+      option.value = city;
+      option.textContent = city;
+      citySelect.appendChild(option);
+    });
+    if (!rawData["珠海"]) {
+      const option = document.createElement("option");
+      option.value = "珠海";
+      option.textContent = "珠海（暂无同口径指数）";
+      option.disabled = true;
+      citySelect.appendChild(option);
+    }
+    citySelect.value = rawData["上海"] ? "上海" : Object.keys(rawData)[0];
+    citySelect.addEventListener("change", () => applyCity(citySelect.value, true));
     [startMonth, endMonth].forEach((input) => input.addEventListener("change", render));
     indicatorPeriod.addEventListener("change", render);
     indicatorPeriod.addEventListener("input", render);
@@ -821,7 +813,6 @@
     basePrice.addEventListener("input", render);
     startRange.addEventListener("input", () => { startMonth.value = monthFromIndex(Number(startRange.value)); render(); });
     endRange.addEventListener("input", () => { endMonth.value = monthFromIndex(Number(endRange.value)); render(); });
-
     document.querySelectorAll("button[data-window]").forEach((button) => {
       button.addEventListener("click", () => {
         const value = button.dataset.window;
@@ -832,8 +823,7 @@
         render();
       });
     });
-
-    render();
+    applyCity(citySelect.value, true);
     window.addEventListener("resize", render);
   </script>
 </body>

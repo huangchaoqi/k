@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 
 import akshare as ak
+import pandas as pd
 
 
 START = "2011-01-01"
@@ -55,16 +56,15 @@ def main() -> None:
         second = CITIES[index + 1] if index + 1 < len(CITIES) else CITIES[0]
         frames.append(ak.macro_china_new_house_price(city_first=first, city_second=second))
 
-    df = frames[0]
-    for frame in frames[1:]:
-        df = df._append(frame, ignore_index=True)
+    df = pd.concat(frames, ignore_index=True)
     df = df.drop_duplicates(subset=["日期", "城市"])
 
     data = {}
     for city in CITIES:
         rows = city_rows(df, city)
         if not rows:
-            raise RuntimeError(f"No data found for {city}")
+            print(f"{city}: no same-source index data found, skipped")
+            continue
         data[city] = rows
         print(f"{city}: {len(rows)} rows, {rows[0]['date']} to {rows[-1]['date']}")
 

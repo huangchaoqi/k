@@ -1,4 +1,4 @@
-name: Update Shanghai House Price Chart
+name: Update City House Price Chart
 
 on:
   workflow_dispatch:
@@ -44,7 +44,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No data changes to commit."
           else
-            git commit -m "Update Shanghai house price data"
+          git commit -m "Update city house price data"
             git push
           fi
 
