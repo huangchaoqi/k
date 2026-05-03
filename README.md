@@ -37,7 +37,7 @@
 3. 执行 `build_shanghai_house_price_data.py` 抓取最新数据。
 4. 执行 `make_single_file.py` 生成 `index.html`。
 5. 如果数据有变化，自动提交回 GitHub。
-6. 部署到 GitHub Pages。
+6. GitHub Pages 从 `main` 分支的 `index.html` 自动发布网站。
 
 也可以在 GitHub 仓库的 **Actions** 页面手动运行 `Update City House Price Chart`。
 
@@ -46,7 +46,8 @@
 1. 在 GitHub 新建一个仓库。
 2. 把本文件夹内容推送到仓库。
 3. 进入仓库的 **Settings → Pages**。
-4. 在 **Build and deployment** 里选择 **GitHub Actions**。
-5. 到 **Actions** 页面手动运行一次 `Update City House Price Chart`。
+4. 在 **Build and deployment** 里选择 **Deploy from a branch**。
+5. Branch 选择 `main`，文件夹选择 `/root`，然后点 **Save**。
+6. 到 **Actions** 页面手动运行一次 `Update City House Price Chart`。
 
 运行完成后，GitHub Pages 会给出一个公网 URL，手机浏览器可以直接打开。
