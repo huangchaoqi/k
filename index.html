@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>城市二手住宅价格指数 K 线图</title>
+  <title>全国主要城市二手住宅销售价格指数 K 线图</title>
   <style>
     :root {
       color-scheme: light;
@@ -319,7 +319,7 @@
   <main>
     <header>
       <div>
-        <h1 id="pageTitle">上海二手住宅销售价格指数 K 线图</h1>
+        <h1 id="pageTitle">全国主要城市二手住宅销售价格指数 K 线图</h1>
         <div class="subtitle">
           可切换北京、上海、南京、成都、昆明、珠海、广州、深圳。时间选择器覆盖 2010-01 至最新数据月份；可用的同口径月度数据从 2011-01 开始。K 线按月绘制：开盘为上月链式指数，收盘为本月链式指数，高低取开收上下沿。
         </div>
@@ -585,7 +585,7 @@
       firstDataDate = allCandles[0].date;
       lastDataDate = allCandles[allCandles.length - 1].date;
       const lastIndex = monthIndex(lastDataDate);
-      document.getElementById("pageTitle").textContent = `${city}二手住宅销售价格指数 K 线图`;
+      document.getElementById("pageTitle").textContent = "全国主要城市二手住宅销售价格指数 K 线图";
       endMonth.max = lastDataDate;
       startMonth.max = lastDataDate;
       baseMonth.max = lastDataDate;
