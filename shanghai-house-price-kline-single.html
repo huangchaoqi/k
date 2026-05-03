@@ -1,0 +1,840 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>上海二手住宅价格指数 K 线图</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --text: #17202a;
+      --muted: #64748b;
+      --grid: #d9e0ea;
+      --up: #d93f3f;
+      --down: #16885f;
+      --accent: #2454c5;
+      --warn-bg: #fff7ed;
+      --warn: #9a3412;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+    }
+
+    main {
+      max-width: 1220px;
+      margin: 0 auto;
+      padding: 28px 20px 36px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      align-items: flex-end;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 26px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 760px;
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 14px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(120px, 1fr));
+      gap: 10px;
+      min-width: 410px;
+    }
+
+    .stat {
+      background: var(--panel);
+      border: 1px solid #e6ebf2;
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+
+    .stat span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 20px;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: minmax(300px, 1fr) auto;
+      gap: 16px;
+      align-items: end;
+      background: var(--panel);
+      border: 1px solid #e3e8f0;
+      border-radius: 8px;
+      padding: 14px 16px 16px;
+      margin-bottom: 14px;
+    }
+
+    .control-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+      align-items: end;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    input[type="month"],
+    input[type="number"] {
+      height: 36px;
+      border: 1px solid #cfd8e3;
+      border-radius: 7px;
+      padding: 0 10px;
+      color: var(--text);
+      font: inherit;
+      min-width: 148px;
+      background: #fff;
+    }
+
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    button {
+      height: 36px;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      color: #24324a;
+      border-radius: 7px;
+      padding: 0 12px;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    button:hover { border-color: var(--accent); color: var(--accent); }
+
+    .range-line {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 6px;
+      margin-top: 12px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .range-caption {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .notice {
+      display: none;
+      margin-bottom: 14px;
+      padding: 10px 12px;
+      border: 1px solid #fed7aa;
+      border-radius: 8px;
+      background: var(--warn-bg);
+      color: var(--warn);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .chart-wrap {
+      position: relative;
+      background: var(--panel);
+      border: 1px solid #e3e8f0;
+      border-radius: 8px;
+      box-shadow: 0 14px 38px rgba(15, 23, 42, 0.08);
+      overflow: hidden;
+    }
+
+    svg {
+      display: block;
+      width: 100%;
+      height: min(68vh, 640px);
+      min-height: 470px;
+    }
+
+    .indicator-panel {
+      border-top: 1px solid #e3e8f0;
+      background: #fbfcfe;
+    }
+
+    .indicator-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 18px 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .indicator-head strong {
+      color: var(--text);
+      font-size: 13px;
+      margin-right: 8px;
+    }
+
+    .indicator-chart {
+      height: 118px;
+      min-height: 118px;
+    }
+
+    .axis { fill: var(--muted); font-size: 12px; }
+    .grid { stroke: var(--grid); stroke-width: 1; }
+    .axis-line { stroke: #9aa7b8; stroke-width: 1; }
+    .candle { cursor: crosshair; }
+    .line { fill: none; stroke: var(--accent); stroke-width: 2; }
+    .ma-line { fill: none; stroke-width: 1.8; }
+    .point { fill: var(--accent); stroke: #fff; stroke-width: 2; }
+    .crosshair {
+      display: none;
+      pointer-events: none;
+    }
+    .crosshair line {
+      stroke: #7b8798;
+      stroke-width: 1;
+      stroke-dasharray: 2 3;
+      shape-rendering: crispEdges;
+    }
+    .crosshair text {
+      fill: #fff;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .crosshair rect {
+      fill: rgba(23, 32, 42, 0.88);
+      rx: 3;
+    }
+
+    .tooltip {
+      position: absolute;
+      display: none;
+      pointer-events: none;
+      min-width: 176px;
+      max-width: 240px;
+      padding: 10px 12px;
+      background: rgba(23, 32, 42, 0.94);
+      color: #fff;
+      border-radius: 8px;
+      font-size: 12px;
+      line-height: 1.65;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.22);
+      z-index: 2;
+      white-space: nowrap;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+      padding: 14px 18px 16px;
+      border-top: 1px solid #e3e8f0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .key {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .swatch {
+      width: 13px;
+      height: 13px;
+      border-radius: 3px;
+      display: inline-block;
+    }
+
+    .up { background: var(--up); }
+    .down { background: var(--down); }
+
+    .source {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.8;
+    }
+
+    .source a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    @media (max-width: 860px) {
+      main { padding: 20px 12px 28px; }
+      header { display: block; }
+      .stats {
+        min-width: 0;
+        grid-template-columns: 1fr;
+        margin-top: 14px;
+      }
+      .controls { grid-template-columns: 1fr; }
+      .buttons { justify-content: flex-start; }
+      h1 { font-size: 22px; }
+      svg { height: 540px; min-height: 540px; }
+      .indicator-chart { height: 120px; min-height: 120px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>上海二手住宅销售价格指数 K 线图</h1>
+        <div class="subtitle">
+          时间选择器覆盖 2010-01 至 2026-03；可用的同口径月度数据为 2011-01 至 2026-03。K 线按月绘制：开盘为上月链式指数，收盘为本月链式指数，高低取开收上下沿。
+        </div>
+      </div>
+      <section class="stats" aria-label="概览数据">
+        <div class="stat">
+          <span>当前窗口</span>
+          <strong id="windowLabel">--</strong>
+        </div>
+        <div class="stat">
+          <span>区间涨跌</span>
+          <strong id="totalMove">--</strong>
+        </div>
+        <div class="stat">
+          <span>最新环比</span>
+          <strong id="latestMom">--</strong>
+        </div>
+      </section>
+    </header>
+
+    <section class="controls" aria-label="时间范围控制">
+      <div>
+        <div class="control-row">
+          <label>
+            开始月份
+            <input id="startMonth" type="month" min="2010-01" max="2026-03" value="2011-01">
+          </label>
+          <label>
+            结束月份
+            <input id="endMonth" type="month" min="2010-01" max="2026-03" value="2026-03">
+          </label>
+          <label>
+            指标周期
+            <input id="indicatorPeriod" type="number" min="2" max="60" step="1" value="14">
+          </label>
+          <label>
+            基准月份
+            <input id="baseMonth" type="month" min="2011-01" max="2026-03" value="2026-03">
+          </label>
+          <label>
+            基准均价 元/㎡
+            <input id="basePrice" type="number" min="1" step="1" value="55075">
+          </label>
+        </div>
+        <div class="range-line">
+          <input id="startRange" type="range" min="0" max="194" value="12">
+          <input id="endRange" type="range" min="0" max="194" value="194">
+          <div class="range-caption">
+            <span>2010-01</span>
+            <span>2026-03</span>
+          </div>
+        </div>
+      </div>
+      <div class="buttons">
+        <button type="button" data-window="36">近 3 年</button>
+        <button type="button" data-window="60">近 5 年</button>
+        <button type="button" data-window="120">近 10 年</button>
+        <button type="button" data-window="all">全部可用</button>
+      </div>
+    </section>
+
+    <div id="notice" class="notice">
+      2010 年是统计局该系列的基期年，公开机器可读的同口径月度序列从 2011-01 开始；已自动截取到可绘制区间。
+    </div>
+
+    <section class="chart-wrap">
+      <div id="tooltip" class="tooltip"></div>
+      <svg id="chart" role="img" aria-label="上海二手住宅销售价格指数月度 K 线图"></svg>
+      <div class="indicator-panel">
+        <div class="indicator-head">
+          <span><strong>ATR</strong><span id="atrLatest">--</span></span>
+          <span>Average True Range，按月度指数 K 线计算</span>
+        </div>
+        <svg id="atrChart" class="indicator-chart" role="img" aria-label="ATR 指标"></svg>
+      </div>
+      <div class="indicator-panel">
+        <div class="indicator-head">
+          <span><strong>ADR</strong><span id="adrLatest">--</span></span>
+          <span>Average Daily Range，此处按月度高低区间百分比计算</span>
+        </div>
+        <svg id="adrChart" class="indicator-chart" role="img" aria-label="ADR 指标"></svg>
+      </div>
+      <div class="legend">
+        <span class="key"><i class="swatch up"></i>上涨月份</span>
+        <span class="key"><i class="swatch down"></i>下跌月份</span>
+        <span class="key">蓝线：估算均价，单位元/㎡</span>
+        <span class="key"><i class="swatch" style="background:#ec4899"></i>EMA10</span>
+        <span class="key"><i class="swatch" style="background:#14b8a6"></i>EMA21</span>
+        <span class="key"><i class="swatch" style="background:#111827"></i>SMA50</span>
+        <span>ATR 为元/㎡，ADR 为百分比；默认周期为 14 个月，可在上方调整。</span>
+        <span>注：统计局发布的是月度价格指数，不含真实成交最高价或最低价。</span>
+      </div>
+    </section>
+
+    <p class="source">
+      数据来源：AkShare 的中国新房价指数接口，源站为东方财富宏观数据并整理自国家统计局 70 个大中城市住宅销售价格指数。最新值已与国家统计局
+      <a href="https://www.stats.gov.cn/sj/zxfb/202604/t20260416_1963320.html">2026 年 3 月</a>
+      页面核对：上海二手住宅环比为 100.4。默认房价锚点参考
+      <a href="https://tt.xinmin.cn/2026/04/01/32882204.htm">新民网 2026 年 3 月上海二手住宅均价 55075 元/㎡</a>。
+    </p>
+  </main>
+
+  <script>
+    window.SHANGHAI_HOUSE_PRICE_DATA = [{"date":"2011-01","mom":100.5,"open":100.0995,"high":100.6,"low":100.0995,"close":100.6,"fixed":100.6},{"date":"2011-02","mom":100.4,"open":100.6,"high":101.0024,"low":100.6,"close":101.0024,"fixed":101.0},{"date":"2011-03","mom":100.4,"open":101.0024,"high":101.4064,"low":101.0024,"close":101.4064,"fixed":101.4},{"date":"2011-04","mom":100.6,"open":101.4064,"high":102.0148,"low":101.4064,"close":102.0148,"fixed":102.0},{"date":"2011-05","mom":100.2,"open":102.0148,"high":102.2189,"low":102.0148,"close":102.2189,"fixed":102.3},{"date":"2011-06","mom":100.2,"open":102.2189,"high":102.4233,"low":102.2189,"close":102.4233,"fixed":102.5},{"date":"2011-07","mom":100.3,"open":102.4233,"high":102.7306,"low":102.4233,"close":102.7306,"fixed":102.8},{"date":"2011-08","mom":100.1,"open":102.7306,"high":102.8333,"low":102.7306,"close":102.8333,"fixed":102.9},{"date":"2011-09","mom":100.1,"open":102.8333,"high":102.9361,"low":102.8333,"close":102.9361,"fixed":103.0},{"date":"2011-10","mom":99.8,"open":102.9361,"high":102.9361,"low":102.7303,"close":102.7303,"fixed":102.8},{"date":"2011-11","mom":99.5,"open":102.7303,"high":102.7303,"low":102.2166,"close":102.2166,"fixed":102.3},{"date":"2011-12","mom":99.6,"open":102.2166,"high":102.2166,"low":101.8078,"close":101.8078,"fixed":101.9},{"date":"2012-01","mom":99.3,"open":101.8078,"high":101.8078,"low":101.0951,"close":101.0951,"fixed":101.2},{"date":"2012-02","mom":99.7,"open":101.0951,"high":101.0951,"low":100.7918,"close":100.7918,"fixed":100.9},{"date":"2012-03","mom":99.5,"open":100.7918,"high":100.7918,"low":100.2879,"close":100.2879,"fixed":100.4},{"date":"2012-04","mom":100.1,"open":100.2879,"high":100.3881,"low":100.2879,"close":100.3881,"fixed":100.4},{"date":"2012-05","mom":100.3,"open":100.3881,"high":100.6893,"low":100.3881,"close":100.6893,"fixed":100.7},{"date":"2012-06","mom":100.2,"open":100.6893,"high":100.8907,"low":100.6893,"close":100.8907,"fixed":100.9},{"date":"2012-07","mom":100.2,"open":100.8907,"high":101.0925,"low":100.8907,"close":101.0925,"fixed":101.1},{"date":"2012-08","mom":100.3,"open":101.0925,"high":101.3958,"low":101.0925,"close":101.3958,"fixed":101.4},{"date":"2012-09","mom":100.2,"open":101.3958,"high":101.5985,"low":101.3958,"close":101.5985,"fixed":101.6},{"date":"2012-10","mom":100.2,"open":101.5985,"high":101.8017,"low":101.5985,"close":101.8017,"fixed":101.8},{"date":"2012-11","mom":100.2,"open":101.8017,"high":102.0053,"low":101.8017,"close":102.0053,"fixed":102.0},{"date":"2012-12","mom":100.4,"open":102.0053,"high":102.4134,"low":102.0053,"close":102.4134,"fixed":102.3},{"date":"2013-01","mom":100.8,"open":102.4134,"high":103.2327,"low":102.4134,"close":103.2327,"fixed":103.2},{"date":"2013-02","mom":101.6,"open":103.2327,"high":104.8844,"low":103.2327,"close":104.8844,"fixed":104.9},{"date":"2013-03","mom":102.6,"open":104.8844,"high":107.6114,"low":104.8844,"close":107.6114,"fixed":107.6},{"date":"2013-04","mom":101.3,"open":107.6114,"high":109.0103,"low":107.6114,"close":109.0103,"fixed":109.0},{"date":"2013-05","mom":100.9,"open":109.0103,"high":109.9914,"low":109.0103,"close":109.9914,"fixed":110.0},{"date":"2013-06","mom":101.1,"open":109.9914,"high":111.2013,"low":109.9914,"close":111.2013,"fixed":111.2},{"date":"2013-07","mom":100.8,"open":111.2013,"high":112.0909,"low":111.2013,"close":112.0909,"fixed":112.1},{"date":"2013-08","mom":100.8,"open":112.0909,"high":112.9877,"low":112.0909,"close":112.9877,"fixed":113.0},{"date":"2013-09","mom":101.0,"open":112.9877,"high":114.1175,"low":112.9877,"close":114.1175,"fixed":114.1},{"date":"2013-10","mom":100.9,"open":114.1175,"high":115.1446,"low":114.1175,"close":115.1446,"fixed":115.2},{"date":"2013-11","mom":100.7,"open":115.1446,"high":115.9506,"low":115.1446,"close":115.9506,"fixed":116.0},{"date":"2013-12","mom":100.5,"open":115.9506,"high":116.5304,"low":115.9506,"close":116.5304,"fixed":116.6},{"date":"2014-01","mom":100.1,"open":116.5304,"high":116.6469,"low":116.5304,"close":116.6469,"fixed":116.8},{"date":"2014-02","mom":100.6,"open":116.6469,"high":117.3468,"low":116.6469,"close":117.3468,"fixed":117.5},{"date":"2014-03","mom":100.2,"open":117.3468,"high":117.5815,"low":117.3468,"close":117.5815,"fixed":117.8},{"date":"2014-04","mom":100.0,"open":117.5815,"high":117.5815,"low":117.5815,"close":117.5815,"fixed":117.8},{"date":"2014-05","mom":99.8,"open":117.5815,"high":117.5815,"low":117.3463,"close":117.3463,"fixed":117.5},{"date":"2014-06","mom":99.3,"open":117.3463,"high":117.3463,"low":116.5249,"close":116.5249,"fixed":116.7},{"date":"2014-07","mom":99.1,"open":116.5249,"high":116.5249,"low":115.4762,"close":115.4762,"fixed":115.7},{"date":"2014-08","mom":99.3,"open":115.4762,"high":115.4762,"low":114.6678,"close":114.6678,"fixed":114.9},{"date":"2014-09","mom":99.2,"open":114.6678,"high":114.6678,"low":113.7505,"close":113.7505,"fixed":114.0},{"date":"2014-10","mom":100.0,"open":113.7505,"high":113.7505,"low":113.7505,"close":113.7505,"fixed":114.1},{"date":"2014-11","mom":100.0,"open":113.7505,"high":113.7505,"low":113.7505,"close":113.7505,"fixed":114.0},{"date":"2014-12","mom":100.4,"open":113.7505,"high":114.2055,"low":113.7505,"close":114.2055,"fixed":114.5},{"date":"2015-01","mom":100.3,"open":114.2055,"high":114.5481,"low":114.2055,"close":114.5481,"fixed":114.9},{"date":"2015-02","mom":100.1,"open":114.5481,"high":114.6627,"low":114.5481,"close":114.6627,"fixed":115.0},{"date":"2015-03","mom":100.0,"open":114.6627,"high":114.6627,"low":114.6627,"close":114.6627,"fixed":115.0},{"date":"2015-04","mom":100.6,"open":114.6627,"high":115.3506,"low":114.6627,"close":115.3506,"fixed":115.7},{"date":"2015-05","mom":102.2,"open":115.3506,"high":117.8883,"low":115.3506,"close":117.8883,"fixed":118.2},{"date":"2015-06","mom":101.2,"open":117.8883,"high":119.303,"low":117.8883,"close":119.303,"fixed":119.6},{"date":"2015-07","mom":101.6,"open":119.303,"high":121.2119,"low":119.303,"close":121.2119,"fixed":121.5},{"date":"2015-08","mom":101.1,"open":121.2119,"high":122.5452,"low":121.2119,"close":122.5452,"fixed":122.8},{"date":"2015-09","mom":101.0,"open":122.5452,"high":123.7706,"low":122.5452,"close":123.7706,"fixed":124.1},{"date":"2015-10","mom":100.8,"open":123.7706,"high":124.7608,"low":123.7706,"close":124.7608,"fixed":125.1},{"date":"2015-11","mom":101.0,"open":124.7608,"high":126.0084,"low":124.7608,"close":126.0084,"fixed":126.3},{"date":"2015-12","mom":101.2,"open":126.0084,"high":127.5205,"low":126.0084,"close":127.5205,"fixed":127.9},{"date":"2016-01","mom":102.7,"open":127.5205,"high":130.9636,"low":127.5205,"close":130.9636,"fixed":null},{"date":"2016-02","mom":105.3,"open":130.9636,"high":137.9046,"low":130.9636,"close":137.9046,"fixed":null},{"date":"2016-03","mom":106.2,"open":137.9046,"high":146.4547,"low":137.9046,"close":146.4547,"fixed":null},{"date":"2016-04","mom":102.5,"open":146.4547,"high":150.1161,"low":146.4547,"close":150.1161,"fixed":null},{"date":"2016-05","mom":101.4,"open":150.1161,"high":152.2177,"low":150.1161,"close":152.2177,"fixed":null},{"date":"2016-06","mom":102.2,"open":152.2177,"high":155.5665,"low":152.2177,"close":155.5665,"fixed":null},{"date":"2016-07","mom":102.0,"open":155.5665,"high":158.6778,"low":155.5665,"close":158.6778,"fixed":null},{"date":"2016-08","mom":103.7,"open":158.6778,"high":164.5489,"low":158.6778,"close":164.5489,"fixed":null},{"date":"2016-09","mom":103.4,"open":164.5489,"high":170.1436,"low":164.5489,"close":170.1436,"fixed":null},{"date":"2016-10","mom":100.3,"open":170.1436,"high":170.654,"low":170.1436,"close":170.654,"fixed":null},{"date":"2016-11","mom":99.8,"open":170.654,"high":170.654,"low":170.3127,"close":170.3127,"fixed":null},{"date":"2016-12","mom":99.5,"open":170.3127,"high":170.3127,"low":169.4611,"close":169.4611,"fixed":null},{"date":"2017-01","mom":99.6,"open":169.4611,"high":169.4611,"low":168.7833,"close":168.7833,"fixed":null},{"date":"2017-02","mom":100.2,"open":168.7833,"high":169.1209,"low":168.7833,"close":169.1209,"fixed":null},{"date":"2017-03","mom":100.7,"open":169.1209,"high":170.3047,"low":169.1209,"close":170.3047,"fixed":null},{"date":"2017-04","mom":100.8,"open":170.3047,"high":171.6671,"low":170.3047,"close":171.6671,"fixed":null},{"date":"2017-05","mom":100.0,"open":171.6671,"high":171.6671,"low":171.6671,"close":171.6671,"fixed":null},{"date":"2017-06","mom":99.9,"open":171.6671,"high":171.6671,"low":171.4955,"close":171.4955,"fixed":null},{"date":"2017-07","mom":99.6,"open":171.4955,"high":171.4955,"low":170.8095,"close":170.8095,"fixed":null},{"date":"2017-08","mom":99.8,"open":170.8095,"high":170.8095,"low":170.4679,"close":170.4679,"fixed":null},{"date":"2017-09","mom":99.9,"open":170.4679,"high":170.4679,"low":170.2974,"close":170.2974,"fixed":null},{"date":"2017-10","mom":100.3,"open":170.2974,"high":170.8083,"low":170.2974,"close":170.8083,"fixed":null},{"date":"2017-11","mom":99.7,"open":170.8083,"high":170.8083,"low":170.2959,"close":170.2959,"fixed":null},{"date":"2017-12","mom":99.9,"open":170.2959,"high":170.2959,"low":170.1256,"close":170.1256,"fixed":null},{"date":"2018-01","mom":100.1,"open":170.1256,"high":170.2957,"low":170.1256,"close":170.2957,"fixed":null},{"date":"2018-02","mom":99.6,"open":170.2957,"high":170.2957,"low":169.6145,"close":169.6145,"fixed":null},{"date":"2018-03","mom":99.4,"open":169.6145,"high":169.6145,"low":168.5968,"close":168.5968,"fixed":null},{"date":"2018-04","mom":99.8,"open":168.5968,"high":168.5968,"low":168.2596,"close":168.2596,"fixed":null},{"date":"2018-05","mom":99.7,"open":168.2596,"high":168.2596,"low":167.7549,"close":167.7549,"fixed":null},{"date":"2018-06","mom":99.7,"open":167.7549,"high":167.7549,"low":167.2516,"close":167.2516,"fixed":null},{"date":"2018-07","mom":99.9,"open":167.2516,"high":167.2516,"low":167.0843,"close":167.0843,"fixed":null},{"date":"2018-08","mom":99.9,"open":167.0843,"high":167.0843,"low":166.9173,"close":166.9173,"fixed":null},{"date":"2018-09","mom":99.8,"open":166.9173,"high":166.9173,"low":166.5834,"close":166.5834,"fixed":null},{"date":"2018-10","mom":99.8,"open":166.5834,"high":166.5834,"low":166.2503,"close":166.2503,"fixed":null},{"date":"2018-11","mom":99.9,"open":166.2503,"high":166.2503,"low":166.084,"close":166.084,"fixed":null},{"date":"2018-12","mom":99.7,"open":166.084,"high":166.084,"low":165.5858,"close":165.5858,"fixed":null},{"date":"2019-01","mom":100.0,"open":165.5858,"high":165.5858,"low":165.5858,"close":165.5858,"fixed":null},{"date":"2019-02","mom":99.9,"open":165.5858,"high":165.5858,"low":165.4202,"close":165.4202,"fixed":null},{"date":"2019-03","mom":100.3,"open":165.4202,"high":165.9164,"low":165.4202,"close":165.9164,"fixed":null},{"date":"2019-04","mom":100.5,"open":165.9164,"high":166.746,"low":165.9164,"close":166.746,"fixed":null},{"date":"2019-05","mom":100.1,"open":166.746,"high":166.9128,"low":166.746,"close":166.9128,"fixed":null},{"date":"2019-06","mom":99.9,"open":166.9128,"high":166.9128,"low":166.7458,"close":166.7458,"fixed":null},{"date":"2019-07","mom":100.4,"open":166.7458,"high":167.4128,"low":166.7458,"close":167.4128,"fixed":null},{"date":"2019-08","mom":100.0,"open":167.4128,"high":167.4128,"low":167.4128,"close":167.4128,"fixed":null},{"date":"2019-09","mom":100.6,"open":167.4128,"high":168.4173,"low":167.4128,"close":168.4173,"fixed":null},{"date":"2019-10","mom":99.8,"open":168.4173,"high":168.4173,"low":168.0805,"close":168.0805,"fixed":null},{"date":"2019-11","mom":100.0,"open":168.0805,"high":168.0805,"low":168.0805,"close":168.0805,"fixed":null},{"date":"2019-12","mom":99.8,"open":168.0805,"high":168.0805,"low":167.7443,"close":167.7443,"fixed":null},{"date":"2020-01","mom":100.2,"open":167.7443,"high":168.0798,"low":167.7443,"close":168.0798,"fixed":null},{"date":"2020-02","mom":100.2,"open":168.0798,"high":168.416,"low":168.0798,"close":168.416,"fixed":null},{"date":"2020-03","mom":100.3,"open":168.416,"high":168.9212,"low":168.416,"close":168.9212,"fixed":null},{"date":"2020-04","mom":101.2,"open":168.9212,"high":170.9483,"low":168.9212,"close":170.9483,"fixed":null},{"date":"2020-05","mom":100.6,"open":170.9483,"high":171.974,"low":170.9483,"close":171.974,"fixed":null},{"date":"2020-06","mom":100.4,"open":171.974,"high":172.6618,"low":171.974,"close":172.6618,"fixed":null},{"date":"2020-07","mom":100.5,"open":172.6618,"high":173.5252,"low":172.6618,"close":173.5252,"fixed":null},{"date":"2020-08","mom":100.8,"open":173.5252,"high":174.9134,"low":173.5252,"close":174.9134,"fixed":null},{"date":"2020-09","mom":101.0,"open":174.9134,"high":176.6625,"low":174.9134,"close":176.6625,"fixed":null},{"date":"2020-10","mom":100.5,"open":176.6625,"high":177.5458,"low":176.6625,"close":177.5458,"fixed":null},{"date":"2020-11","mom":100.3,"open":177.5458,"high":178.0784,"low":177.5458,"close":178.0784,"fixed":null},{"date":"2020-12","mom":100.6,"open":178.0784,"high":179.1469,"low":178.0784,"close":179.1469,"fixed":null},{"date":"2021-01","mom":101.3,"open":179.1469,"high":181.4758,"low":179.1469,"close":181.4758,"fixed":104.5},{"date":"2021-02","mom":101.3,"open":181.4758,"high":183.835,"low":181.4758,"close":183.835,"fixed":105.8},{"date":"2021-03","mom":101.1,"open":183.835,"high":185.8572,"low":183.835,"close":185.8572,"fixed":107.0},{"date":"2021-04","mom":100.9,"open":185.8572,"high":187.5299,"low":185.8572,"close":187.5299,"fixed":107.9},{"date":"2021-05","mom":100.7,"open":187.5299,"high":188.8426,"low":187.5299,"close":188.8426,"fixed":108.6},{"date":"2021-06","mom":101.0,"open":188.8426,"high":190.731,"low":188.8426,"close":190.731,"fixed":109.6},{"date":"2021-07","mom":100.7,"open":190.731,"high":192.0662,"low":190.731,"close":192.0662,"fixed":110.3},{"date":"2021-08","mom":100.2,"open":192.0662,"high":192.4503,"low":192.0662,"close":192.4503,"fixed":110.5},{"date":"2021-09","mom":99.4,"open":192.4503,"high":192.4503,"low":191.2956,"close":191.2956,"fixed":109.9},{"date":"2021-10","mom":99.6,"open":191.2956,"high":191.2956,"low":190.5304,"close":190.5304,"fixed":109.5},{"date":"2021-11","mom":99.9,"open":190.5304,"high":190.5304,"low":190.3399,"close":190.3399,"fixed":109.4},{"date":"2021-12","mom":100.4,"open":190.3399,"high":191.1012,"low":190.3399,"close":191.1012,"fixed":109.8},{"date":"2022-01","mom":100.6,"open":191.1012,"high":192.2478,"low":191.1012,"close":192.2478,"fixed":110.5},{"date":"2022-02","mom":100.9,"open":192.2478,"high":193.9781,"low":192.2478,"close":193.9781,"fixed":111.5},{"date":"2022-03","mom":100.4,"open":193.9781,"high":194.754,"low":193.9781,"close":194.754,"fixed":111.9},{"date":"2022-04","mom":100.0,"open":194.754,"high":194.754,"low":194.754,"close":194.754,"fixed":111.9},{"date":"2022-05","mom":100.0,"open":194.754,"high":194.754,"low":194.754,"close":194.754,"fixed":111.9},{"date":"2022-06","mom":100.2,"open":194.754,"high":195.1435,"low":194.754,"close":195.1435,"fixed":112.2},{"date":"2022-07","mom":100.8,"open":195.1435,"high":196.7046,"low":195.1435,"close":196.7046,"fixed":113.0},{"date":"2022-08","mom":100.6,"open":196.7046,"high":197.8849,"low":196.7046,"close":197.8849,"fixed":113.6},{"date":"2022-09","mom":100.5,"open":197.8849,"high":198.8743,"low":197.8849,"close":198.8743,"fixed":114.2},{"date":"2022-10","mom":99.6,"open":198.8743,"high":198.8743,"low":198.0788,"close":198.0788,"fixed":113.7},{"date":"2022-11","mom":99.5,"open":198.0788,"high":198.0788,"low":197.0884,"close":197.0884,"fixed":113.2},{"date":"2022-12","mom":99.5,"open":197.0884,"high":197.0884,"low":196.103,"close":196.103,"fixed":112.7},{"date":"2023-01","mom":100.4,"open":196.103,"high":196.8874,"low":196.103,"close":196.8874,"fixed":null},{"date":"2023-02","mom":101.0,"open":196.8874,"high":198.8562,"low":196.8874,"close":198.8562,"fixed":null},{"date":"2023-03","mom":100.7,"open":198.8562,"high":200.2482,"low":198.8562,"close":200.2482,"fixed":null},{"date":"2023-04","mom":99.8,"open":200.2482,"high":200.2482,"low":199.8477,"close":199.8477,"fixed":null},{"date":"2023-05","mom":99.2,"open":199.8477,"high":199.8477,"low":198.249,"close":198.249,"fixed":null},{"date":"2023-06","mom":98.8,"open":198.249,"high":198.249,"low":195.87,"close":195.87,"fixed":null},{"date":"2023-07","mom":99.3,"open":195.87,"high":195.87,"low":194.4989,"close":194.4989,"fixed":null},{"date":"2023-08","mom":99.7,"open":194.4989,"high":194.4989,"low":193.9154,"close":193.9154,"fixed":null},{"date":"2023-09","mom":100.6,"open":193.9154,"high":195.0789,"low":193.9154,"close":195.0789,"fixed":null},{"date":"2023-10","mom":99.2,"open":195.0789,"high":195.0789,"low":193.5183,"close":193.5183,"fixed":null},{"date":"2023-11","mom":98.5,"open":193.5183,"high":193.5183,"low":190.6155,"close":190.6155,"fixed":null},{"date":"2023-12","mom":99.4,"open":190.6155,"high":190.6155,"low":189.4718,"close":189.4718,"fixed":null},{"date":"2024-01","mom":99.2,"open":189.4718,"high":189.4718,"low":187.956,"close":187.956,"fixed":null},{"date":"2024-02","mom":99.4,"open":187.956,"high":187.956,"low":186.8283,"close":186.8283,"fixed":null},{"date":"2024-03","mom":99.7,"open":186.8283,"high":186.8283,"low":186.2678,"close":186.2678,"fixed":null},{"date":"2024-04","mom":99.2,"open":186.2678,"high":186.2678,"low":184.7776,"close":184.7776,"fixed":null},{"date":"2024-05","mom":98.7,"open":184.7776,"high":184.7776,"low":182.3755,"close":182.3755,"fixed":null},{"date":"2024-06","mom":100.5,"open":182.3755,"high":183.2874,"low":182.3755,"close":183.2874,"fixed":null},{"date":"2024-07","mom":100.1,"open":183.2874,"high":183.4707,"low":183.2874,"close":183.4707,"fixed":null},{"date":"2024-08","mom":99.4,"open":183.4707,"high":183.4707,"low":182.3699,"close":182.3699,"fixed":null},{"date":"2024-09","mom":98.8,"open":182.3699,"high":182.3699,"low":180.1814,"close":180.1814,"fixed":null},{"date":"2024-10","mom":100.2,"open":180.1814,"high":180.5418,"low":180.1814,"close":180.5418,"fixed":null},{"date":"2024-11","mom":100.4,"open":180.5418,"high":181.264,"low":180.5418,"close":181.264,"fixed":null},{"date":"2024-12","mom":100.9,"open":181.264,"high":182.8953,"low":181.264,"close":182.8953,"fixed":null},{"date":"2025-01","mom":100.4,"open":182.8953,"high":183.6269,"low":182.8953,"close":183.6269,"fixed":null},{"date":"2025-02","mom":99.6,"open":183.6269,"high":183.6269,"low":182.8924,"close":182.8924,"fixed":null},{"date":"2025-03","mom":100.4,"open":182.8924,"high":183.624,"low":182.8924,"close":183.624,"fixed":null},{"date":"2025-04","mom":100.1,"open":183.624,"high":183.8076,"low":183.624,"close":183.8076,"fixed":null},{"date":"2025-05","mom":99.3,"open":183.8076,"high":183.8076,"low":182.521,"close":182.521,"fixed":null},{"date":"2025-06","mom":99.3,"open":182.521,"high":182.521,"low":181.2433,"close":181.2433,"fixed":null},{"date":"2025-07","mom":99.1,"open":181.2433,"high":181.2433,"low":179.6121,"close":179.6121,"fixed":null},{"date":"2025-08","mom":99.0,"open":179.6121,"high":179.6121,"low":177.816,"close":177.816,"fixed":null},{"date":"2025-09","mom":99.0,"open":177.816,"high":177.816,"low":176.0378,"close":176.0378,"fixed":null},{"date":"2025-10","mom":99.1,"open":176.0378,"high":176.0378,"low":174.4535,"close":174.4535,"fixed":null},{"date":"2025-11","mom":99.2,"open":174.4535,"high":174.4535,"low":173.0579,"close":173.0579,"fixed":null},{"date":"2025-12","mom":99.4,"open":173.0579,"high":173.0579,"low":172.0195,"close":172.0195,"fixed":null},{"date":"2026-01","mom":99.6,"open":172.0195,"high":172.0195,"low":171.3314,"close":171.3314,"fixed":null},{"date":"2026-02","mom":100.2,"open":171.3314,"high":171.6741,"low":171.3314,"close":171.6741,"fixed":null},{"date":"2026-03","mom":100.4,"open":171.6741,"high":172.3608,"low":171.6741,"close":172.3608,"fixed":null}];
+  </script>
+  <script>
+    const allCandles = window.SHANGHAI_HOUSE_PRICE_DATA.map((d) => ({
+      ...d,
+      pct: d.mom - 100
+    }));
+
+    const minControlDate = "2010-01";
+    const maxControlDate = "2026-03";
+    const firstDataDate = allCandles[0].date;
+    const lastDataDate = allCandles[allCandles.length - 1].date;
+    const svg = document.getElementById("chart");
+    const atrSvg = document.getElementById("atrChart");
+    const adrSvg = document.getElementById("adrChart");
+    const tooltip = document.getElementById("tooltip");
+    const notice = document.getElementById("notice");
+    const ns = "http://www.w3.org/2000/svg";
+    const startMonth = document.getElementById("startMonth");
+    const endMonth = document.getElementById("endMonth");
+    const startRange = document.getElementById("startRange");
+    const endRange = document.getElementById("endRange");
+    const indicatorPeriod = document.getElementById("indicatorPeriod");
+    const baseMonth = document.getElementById("baseMonth");
+    const basePrice = document.getElementById("basePrice");
+
+    function monthIndex(date) {
+      const [year, month] = date.split("-").map(Number);
+      return (year - 2010) * 12 + month - 1;
+    }
+
+    function monthFromIndex(index) {
+      const year = 2010 + Math.floor(index / 12);
+      const month = index % 12 + 1;
+      return `${year}-${String(month).padStart(2, "0")}`;
+    }
+
+    function el(name, attrs = {}, parent = svg) {
+      const node = document.createElementNS(ns, name);
+      for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value);
+      parent.appendChild(node);
+      return node;
+    }
+
+    function placeTooltip(event, html) {
+      tooltip.style.display = "block";
+      tooltip.innerHTML = html;
+
+      const chartBox = svg.getBoundingClientRect();
+      const wrapBox = svg.parentElement.getBoundingClientRect();
+      const tipBox = tooltip.getBoundingClientRect();
+      let left = event.clientX - wrapBox.left + 12;
+      let top = event.clientY - wrapBox.top - 12;
+
+      if (left + tipBox.width > wrapBox.width - 8) {
+        left = event.clientX - wrapBox.left - tipBox.width - 12;
+      }
+      if (top + tipBox.height > chartBox.height - 8) {
+        top = chartBox.height - tipBox.height - 8;
+      }
+      if (top < 8) top = 8;
+      if (left < 8) left = 8;
+
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${top}px`;
+    }
+
+    function sma(values, period) {
+      return values.map((_, index) => {
+        if (index < period - 1) return null;
+        const slice = values.slice(index - period + 1, index + 1);
+        return slice.reduce((sum, value) => sum + value, 0) / period;
+      });
+    }
+
+    function ema(values, period) {
+      const alpha = 2 / (period + 1);
+      let previous = null;
+      return values.map((value, index) => {
+        if (index < period - 1) return null;
+        if (index === period - 1) {
+          previous = values.slice(0, period).reduce((sum, item) => sum + item, 0) / period;
+          return previous;
+        }
+        previous = value * alpha + previous * (1 - alpha);
+        return previous;
+      });
+    }
+
+    function withIndicators(candles) {
+      const period = Math.max(2, Math.min(60, Number(indicatorPeriod.value) || 14));
+      indicatorPeriod.value = period;
+      const trueRanges = candles.map((d, index) => {
+        const previousClose = index === 0 ? d.open : candles[index - 1].close;
+        return Math.max(
+          d.high - d.low,
+          Math.abs(d.high - previousClose),
+          Math.abs(d.low - previousClose)
+        );
+      });
+      const ranges = candles.map((d) => ((d.high - d.low) / d.open) * 100);
+      const closes = candles.map((d) => d.close);
+      const atr = sma(trueRanges, period);
+      const adr = sma(ranges, period);
+      const ema10 = ema(closes, 10);
+      const ema21 = ema(closes, 21);
+      const sma50 = sma(closes, 50);
+      return candles.map((d, index) => ({
+        ...d,
+        atr: atr[index],
+        adr: adr[index],
+        ema10: ema10[index],
+        ema21: ema21[index],
+        sma50: sma50[index]
+      }));
+    }
+
+    function renderIndicator(targetSvg, candles, key, color, suffix = "") {
+      targetSvg.textContent = "";
+      const width = targetSvg.clientWidth || 1100;
+      const height = targetSvg.clientHeight || 118;
+      const margin = { top: 12, right: 72, bottom: 20, left: 58 };
+      const innerW = width - margin.left - margin.right;
+      const innerH = height - margin.top - margin.bottom;
+      const values = candles.map((d) => d[key]).filter((value) => value !== null);
+      if (!values.length) {
+        el("text", { x: margin.left, y: height / 2, class: "axis" }, targetSvg).textContent = "当前窗口不足以计算该周期指标";
+        return;
+      }
+      const min = 0;
+      const max = Math.max(...values) * 1.2 || 1;
+      const stepX = innerW / candles.length;
+      const x = (i) => margin.left + stepX * i + stepX / 2;
+      const y = (value) => margin.top + (max - value) / (max - min) * innerH;
+
+      for (let i = 0; i <= 2; i++) {
+        const value = min + (max - min) * i / 2;
+        const yy = y(value);
+        el("line", { x1: margin.left, y1: yy, x2: width - margin.right, y2: yy, class: "grid" }, targetSvg);
+        const label = suffix === "元/㎡" ? `${Math.round(value).toLocaleString("zh-CN")}` : `${value.toFixed(2)}${suffix}`;
+        el("text", { x: width - margin.right + 10, y: yy + 4, class: "axis" }, targetSvg).textContent = label;
+      }
+      el("line", { x1: margin.left, y1: height - margin.bottom, x2: width - margin.right, y2: height - margin.bottom, class: "axis-line" }, targetSvg);
+
+      const points = candles
+        .map((d, i) => ({ value: d[key], i }))
+        .filter((d) => d.value !== null);
+      const path = points.map((d, idx) => `${idx === 0 ? "M" : "L"} ${x(d.i)} ${y(d.value)}`).join(" ");
+      el("path", { d: path, fill: "none", stroke: color, "stroke-width": 2 }, targetSvg);
+      points.forEach((d) => {
+        el("circle", { cx: x(d.i), cy: y(d.value), r: 2.3, fill: color, stroke: "#fff", "stroke-width": 1.5 }, targetSvg);
+      });
+    }
+
+    function renderSeries(plot, candles, key, color, x, y) {
+      const points = candles
+        .map((d, i) => ({ value: d[key], i }))
+        .filter((d) => d.value !== null);
+      if (points.length < 2) return;
+      const path = points.map((d, idx) => `${idx === 0 ? "M" : "L"} ${x(d.i)} ${y(d.value)}`).join(" ");
+      el("path", { d: path, class: "ma-line", stroke: color }, plot);
+    }
+
+    function priceText(value) {
+      return value === null || value === undefined ? "--" : `${Math.round(value).toLocaleString("zh-CN")} 元/㎡`;
+    }
+
+    function clampRange() {
+      let start = monthIndex(startMonth.value);
+      let end = monthIndex(endMonth.value);
+      if (start > end) [start, end] = [end, start];
+      start = Math.max(monthIndex(minControlDate), Math.min(start, monthIndex(maxControlDate)));
+      end = Math.max(monthIndex(minControlDate), Math.min(end, monthIndex(maxControlDate)));
+      startMonth.value = monthFromIndex(start);
+      endMonth.value = monthFromIndex(end);
+      startRange.value = start;
+      endRange.value = end;
+      return { start: monthFromIndex(start), end: monthFromIndex(end) };
+    }
+
+    function selectedCandles() {
+      const requested = clampRange();
+      const start = requested.start < firstDataDate ? firstDataDate : requested.start;
+      const end = requested.end > lastDataDate ? lastDataDate : requested.end;
+      notice.style.display = requested.start < firstDataDate || requested.end < firstDataDate ? "block" : "none";
+      return allCandles.filter((d) => d.date >= start && d.date <= end);
+    }
+
+    function priceScale() {
+      let month = baseMonth.value;
+      if (month < firstDataDate) month = firstDataDate;
+      if (month > lastDataDate) month = lastDataDate;
+      baseMonth.value = month;
+      const anchor = allCandles.find((d) => d.date === month) || allCandles[allCandles.length - 1];
+      const price = Math.max(1, Number(basePrice.value) || 55075);
+      basePrice.value = Math.round(price);
+      return price / anchor.close;
+    }
+
+    function asPriceCandles(candles) {
+      const scale = priceScale();
+      return candles.map((d) => ({
+        ...d,
+        indexOpen: d.open,
+        indexHigh: d.high,
+        indexLow: d.low,
+        indexClose: d.close,
+        open: d.open * scale,
+        high: d.high * scale,
+        low: d.low * scale,
+        close: d.close * scale
+      }));
+    }
+
+    function updateStats(candles) {
+      if (!candles.length) {
+        document.getElementById("windowLabel").textContent = "--";
+        document.getElementById("totalMove").textContent = "--";
+        document.getElementById("latestMom").textContent = "--";
+        document.getElementById("atrLatest").textContent = "--";
+        document.getElementById("adrLatest").textContent = "--";
+        return;
+      }
+      const first = candles[0];
+      const latest = candles[candles.length - 1];
+      const move = (latest.close / first.open - 1) * 100;
+      document.getElementById("windowLabel").textContent = `${first.date} 至 ${latest.date}`;
+      document.getElementById("totalMove").textContent = `${move >= 0 ? "+" : ""}${move.toFixed(1)}%`;
+      document.getElementById("latestMom").textContent = `${latest.pct >= 0 ? "+" : ""}${latest.pct.toFixed(1)}%`;
+    }
+
+    function render() {
+      const candles = withIndicators(asPriceCandles(selectedCandles()));
+      updateStats(candles);
+      svg.textContent = "";
+      atrSvg.textContent = "";
+      adrSvg.textContent = "";
+
+      if (!candles.length) {
+        el("text", { x: 58, y: 80, fill: "#64748b", "font-size": 14 }, svg).textContent = "所选区间没有同口径月度数据，请把结束月份调到 2011-01 或之后。";
+        return;
+      }
+
+      const width = svg.clientWidth || 1100;
+      const height = svg.clientHeight || 600;
+      const margin = { top: 34, right: 72, bottom: 58, left: 58 };
+      const innerW = width - margin.left - margin.right;
+      const innerH = height - margin.top - margin.bottom;
+      const values = candles.flatMap((d) => [
+        d.high,
+        d.low,
+        d.ema10,
+        d.ema21,
+        d.sma50
+      ]).filter((value) => value !== null && value !== undefined);
+      const min = Math.floor((Math.min(...values) - 2) * 10) / 10;
+      const max = Math.ceil((Math.max(...values) + 2) * 10) / 10;
+      const stepX = innerW / candles.length;
+      const candleW = Math.max(3, Math.min(18, stepX * 0.55));
+      const x = (i) => margin.left + stepX * i + stepX / 2;
+      const y = (value) => margin.top + (max - value) / (max - min) * innerH;
+      const plot = el("g");
+      const crosshair = el("g", { class: "crosshair" });
+      const crossV = el("line", { y1: margin.top, y2: height - margin.bottom }, crosshair);
+      const crossH = el("line", { x1: margin.left, x2: width - margin.right }, crosshair);
+      const priceTag = el("g", {}, crosshair);
+      const priceBg = el("rect", { width: 72, height: 22 }, priceTag);
+      const priceTextNode = el("text", { x: 6, y: 15 }, priceTag);
+      const dateTag = el("g", {}, crosshair);
+      const dateBg = el("rect", { width: 58, height: 22 }, dateTag);
+      const dateTextNode = el("text", { x: 6, y: 15 }, dateTag);
+
+      function showCrosshair(index, price) {
+        const xx = x(index);
+        const yy = y(price);
+        crosshair.style.display = "block";
+        crossV.setAttribute("x1", xx);
+        crossV.setAttribute("x2", xx);
+        crossH.setAttribute("y1", yy);
+        crossH.setAttribute("y2", yy);
+
+        const priceLabel = Math.round(price).toLocaleString("zh-CN");
+        priceTextNode.textContent = priceLabel;
+        priceBg.setAttribute("width", Math.max(64, priceLabel.length * 8 + 12));
+        priceTag.setAttribute("transform", `translate(${width - margin.right + 4}, ${Math.max(margin.top, Math.min(yy - 11, height - margin.bottom - 22))})`);
+
+        const dateLabel = candles[index].date;
+        dateTextNode.textContent = dateLabel;
+        dateBg.setAttribute("width", Math.max(58, dateLabel.length * 7 + 12));
+        dateTag.setAttribute("transform", `translate(${Math.max(margin.left, Math.min(xx - 29, width - margin.right - 58))}, ${height - margin.bottom + 30})`);
+      }
+
+      for (let i = 0; i <= 6; i++) {
+        const value = min + (max - min) * i / 6;
+        const yy = y(value);
+        el("line", { x1: margin.left, y1: yy, x2: width - margin.right, y2: yy, class: "grid" }, plot);
+        el("text", { x: width - margin.right + 10, y: yy + 4, class: "axis" }, plot).textContent = Math.round(value).toLocaleString("zh-CN");
+      }
+
+      el("line", { x1: margin.left, y1: margin.top, x2: margin.left, y2: height - margin.bottom, class: "axis-line" }, plot);
+      el("line", { x1: margin.left, y1: height - margin.bottom, x2: width - margin.right, y2: height - margin.bottom, class: "axis-line" }, plot);
+
+      candles.forEach((d, i) => {
+        const xx = x(i);
+        const color = d.close >= d.open ? "var(--up)" : "var(--down)";
+        const bodyTop = y(Math.max(d.open, d.close));
+        const bodyBottom = y(Math.min(d.open, d.close));
+        const bodyHeight = Math.max(2, bodyBottom - bodyTop);
+        const group = el("g", { class: "candle", tabindex: "0" }, plot);
+
+        el("line", { x1: xx, y1: y(d.high), x2: xx, y2: y(d.low), stroke: color, "stroke-width": 1.5 }, group);
+        el("rect", {
+          x: xx - candleW / 2,
+          y: bodyTop,
+          width: candleW,
+          height: bodyHeight,
+          rx: 1.5,
+          fill: color
+        }, group);
+
+        const hit = el("rect", {
+          x: xx - Math.max(stepX / 2, 5),
+          y: margin.top,
+          width: Math.max(stepX, 10),
+          height: innerH,
+          fill: "transparent"
+        }, group);
+
+        const atrText = d.atr === null ? "--" : `${Math.round(d.atr).toLocaleString("zh-CN")} 元/㎡`;
+        const adrText = d.adr === null ? "--" : `${d.adr.toFixed(2)}%`;
+        const tooltipHtml = `
+          <strong>${d.date}</strong><br>
+          开：${priceText(d.open)}<br>
+          收：${priceText(d.close)}<br>
+          环比：${d.pct >= 0 ? "+" : ""}${d.pct.toFixed(1)}%<br>
+          高/低：${Math.round(d.high).toLocaleString("zh-CN")} / ${Math.round(d.low).toLocaleString("zh-CN")} 元/㎡<br>
+          EMA10：${priceText(d.ema10)}<br>
+          EMA21：${priceText(d.ema21)}<br>
+          SMA50：${priceText(d.sma50)}<br>
+          ATR：${atrText}<br>
+          ADR：${adrText}
+        `;
+        hit.addEventListener("mousemove", (event) => {
+          placeTooltip(event, tooltipHtml);
+          showCrosshair(i, d.close);
+        });
+        hit.addEventListener("mouseleave", () => {
+          tooltip.style.display = "none";
+          crosshair.style.display = "none";
+        });
+        group.addEventListener("focus", () => {
+          tooltip.style.display = "block";
+          tooltip.style.left = `${xx}px`;
+          tooltip.style.top = `${y(d.close)}px`;
+          tooltip.innerHTML = tooltipHtml;
+          showCrosshair(i, d.close);
+        });
+        group.addEventListener("blur", () => {
+          tooltip.style.display = "none";
+          crosshair.style.display = "none";
+        });
+      });
+
+      const linePath = candles.map((d, i) => `${i === 0 ? "M" : "L"} ${x(i)} ${y(d.close)}`).join(" ");
+      el("path", { d: linePath, class: "line" }, plot);
+      renderSeries(plot, candles, "ema10", "#ec4899", x, y);
+      renderSeries(plot, candles, "ema21", "#14b8a6", x, y);
+      renderSeries(plot, candles, "sma50", "#111827", x, y);
+      candles.forEach((d, i) => el("circle", { cx: x(i), cy: y(d.close), r: 2.8, class: "point" }, plot));
+
+      const labelEvery = Math.max(1, Math.ceil(candles.length / (width < 720 ? 7 : 14)));
+      candles.forEach((d, i) => {
+        if (i % labelEvery === 0 || i === candles.length - 1) {
+          el("text", {
+            x: x(i),
+            y: height - margin.bottom + 26,
+            "text-anchor": "middle",
+            class: "axis"
+          }, plot).textContent = d.date.slice(2);
+        }
+      });
+
+      el("text", { x: margin.left, y: 22, fill: "#64748b", "font-size": 13 }, plot).textContent = "估算均价，元/㎡";
+      renderIndicator(atrSvg, candles, "atr", "#8b5cf6", "元/㎡");
+      renderIndicator(adrSvg, candles, "adr", "#f59e0b", "%");
+      const latestWithAtr = [...candles].reverse().find((d) => d.atr !== null);
+      const latestWithAdr = [...candles].reverse().find((d) => d.adr !== null);
+      document.getElementById("atrLatest").textContent = latestWithAtr ? `${latestWithAtr.date}: ${Math.round(latestWithAtr.atr).toLocaleString("zh-CN")} 元/㎡` : "--";
+      document.getElementById("adrLatest").textContent = latestWithAdr ? `${latestWithAdr.date}: ${latestWithAdr.adr.toFixed(2)}%` : "--";
+    }
+
+    [startMonth, endMonth].forEach((input) => input.addEventListener("change", render));
+    indicatorPeriod.addEventListener("change", render);
+    indicatorPeriod.addEventListener("input", render);
+    baseMonth.addEventListener("change", render);
+    basePrice.addEventListener("change", render);
+    basePrice.addEventListener("input", render);
+    startRange.addEventListener("input", () => { startMonth.value = monthFromIndex(Number(startRange.value)); render(); });
+    endRange.addEventListener("input", () => { endMonth.value = monthFromIndex(Number(endRange.value)); render(); });
+
+    document.querySelectorAll("button[data-window]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const value = button.dataset.window;
+        const end = monthIndex(lastDataDate);
+        const start = value === "all" ? monthIndex(firstDataDate) : Math.max(monthIndex(firstDataDate), end - Number(value) + 1);
+        startMonth.value = monthFromIndex(start);
+        endMonth.value = monthFromIndex(end);
+        render();
+      });
+    });
+
+    render();
+    window.addEventListener("resize", render);
+  </script>
+</body>
+</html>
